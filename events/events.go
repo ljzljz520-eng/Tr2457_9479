@@ -36,8 +36,12 @@ func (d *Dispatcher) Publish(ctx context.Context, e model.Event) error {
 	if err := d.db.PutEvent(e); err != nil {
 		return err
 	}
-	if err := d.auditor.Audit(ctx, e); err != nil {
-		return err
+	// An auditor is optional: when none is registered, skip the audit step
+	// and still complete dispatch rather than crashing on a nil receiver.
+	if d.auditor != nil {
+		if err := d.auditor.Audit(ctx, e); err != nil {
+			return err
+		}
 	}
 	e.Delivered = true
 	return d.db.PutEvent(e)
